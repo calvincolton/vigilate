@@ -51,6 +51,7 @@ type Host struct {
 	Location      string
 	OS            string
 	Active        int
+	HostServices  []HostServices
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -74,6 +75,7 @@ type HostServices struct {
 	ScheduleNumber int
 	ScheduleUnit   string
 	Status         string
+	Service        Services
 	LastCheck      time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time

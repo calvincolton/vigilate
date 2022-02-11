@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -212,6 +213,47 @@ func (repo *DBRepo) PostHost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/admin/host/%d", h.ID), http.StatusSeeOther)
 
 	w.Write([]byte("Posted Form!"))
+}
+
+type serviceJSON struct {
+	OK bool `json:"ok"`
+}
+
+func (repo *DBRepo) ToggleServiceForHost(w http.ResponseWriter, r *http.Request) {
+	var res serviceJSON
+	res.OK = true
+
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+	}
+
+	hostID, err := strconv.Atoi(r.Form.Get("host_id"))
+	if err != nil {
+		log.Println(err)
+	}
+	serviceID, err := strconv.Atoi(r.Form.Get("service_id"))
+	if err != nil {
+		log.Println(err)
+	}
+	active, err := strconv.Atoi(r.Form.Get("active"))
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = repo.DB.UpdateHostServiceStatus(hostID, serviceID, active)
+	if err != nil {
+		log.Println(err)
+		res.OK = false
+	}
+
+	out, err := json.MarshalIndent(res, "", "    ")
+	if err != nil {
+		log.Println(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(out)
 }
 
 // AllUsers lists all admin users

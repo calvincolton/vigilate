@@ -269,6 +269,9 @@ Host
                                                         value="1"
                                                         id="http_service"
                                                         name="http"
+                                                        data-service="3"
+                                                        data-host-id="{{ host.ID }}"
+                                                        data-type="toggle-service"
                                                     >
                                                     <label class="form-check-label" for="active">Active</label>
                                                 </div>
@@ -321,6 +324,41 @@ Host
 
 {{ block js() }}
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let toggles = document.querySelectorAll("[data-service]");
+
+        for (let i = 0; i < toggles.length; i++) {
+            // console.log("found one");
+            // console.log("Service", toggles[i].getAttribute("data-service"));
+            // console.log("Host", toggles[i].getAttribute("data-host-id"));
+
+            let active = "1";
+            toggles[i].addEventListener("change", function() {
+                if (!this.checked) {
+                    active = "0";
+                } 
+
+                const formData = new FormData();
+                formData.append("host_id", this.getAttribute("data-host-id"));
+                formData.append("service_id", this.getAttribute("data-service"));
+                formData.append("active", active)
+                formData.append("csrf_token", "{{ .CSRFToken }}");
+                
+                fetch("/admin/host/ajax/toggle-service", {
+                    method: "POST",
+                    body: formData
+                }).then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        successAlert("Changes saved")
+                    } else {
+                        errorAlert("Something went wrong")
+                    }
+                });
+            })
+        }
+    })
+
     function val() {
         document.getElementById("action").value = 0;
         let form = document.getElementById("host-form");
