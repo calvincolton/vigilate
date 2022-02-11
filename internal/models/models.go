@@ -51,7 +51,7 @@ type Host struct {
 	Location      string
 	OS            string
 	Active        int
-	HostServices  []HostServices
+	HostServices  []HostService
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -66,8 +66,8 @@ type Services struct {
 	UpdatedAt   time.Time
 }
 
-// HostServices is the model for host services
-type HostServices struct {
+// HostService is the model for host services
+type HostService struct {
 	ID             int
 	HostID         int
 	ServiceID      int
