@@ -51,7 +51,7 @@ type Host struct {
 	Location      string
 	OS            string
 	Active        int
-	CratedAt      time.Time
+	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
