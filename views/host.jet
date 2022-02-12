@@ -61,7 +61,7 @@ Host
                         <a
                             class="nav-link"
                             href="#healthy-content"
-                            data-target=""
+                            data-target="healthy-content"
                             data-toggle="tab"
                             id="healthy-tab"
                             role="tab"

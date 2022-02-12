@@ -75,6 +75,7 @@ type HostService struct {
 	ScheduleNumber int
 	ScheduleUnit   string
 	Status         string
+	HostName       string // not stored in DB
 	Service        Services
 	LastCheck      time.Time
 	CreatedAt      time.Time
