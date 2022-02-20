@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,7 +17,7 @@ func (repo *DBRepo) PusherAuth(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	params, err := ioutil.ReadAll(r.Body)
+	params, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
 	}

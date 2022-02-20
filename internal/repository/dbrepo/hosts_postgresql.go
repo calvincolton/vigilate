@@ -358,7 +358,8 @@ func (m *postgresDBRepo) GetServicesByStatus(status string) ([]models.HostServic
 		FROM host_services AS hs 
 			LEFT JOIN hosts AS h ON (hs.host_id = h.id) 
 			LEFT JOIN services AS s ON (hs.service_id = s.id) 
-		WHERE status = $1 AND hs.active = 1;
+		WHERE status = $1 AND hs.active = 1 
+		ORDER BY host_name, service_name;
 	`
 
 	var services []models.HostService
@@ -396,4 +397,47 @@ func (m *postgresDBRepo) GetServicesByStatus(status string) ([]models.HostServic
 	}
 
 	return services, nil
+}
+
+func (m *postgresDBRepo) GetHostServiceByID(id int) (models.HostService, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `
+		SELECT hs.id, hs.host_id, hs.service_id, hs.active, hs.schedule_number, 
+			hs.schedule_unit, hs.last_check, hs.status, hs.created_at, hs.updated_at, 
+			s.id, s.service_name, s.active, s.icon, s.created_at, s.updated_at 
+		FROM host_services AS hs 
+			LEFT JOIN services AS s ON hs.service_id = s.id 
+		WHERE hs.id = $1;
+	`
+
+	var hs models.HostService
+
+	row := m.DB.QueryRowContext(ctx, query, id)
+
+	err := row.Scan(
+		&hs.ID,
+		&hs.HostID,
+		&hs.ServiceID,
+		&hs.Active,
+		&hs.ScheduleNumber,
+		&hs.ScheduleUnit,
+		&hs.LastCheck,
+		&hs.Status,
+		&hs.CreatedAt,
+		&hs.UpdatedAt,
+		&hs.Service.ID,
+		&hs.Service.ServiceName,
+		&hs.Service.Active,
+		&hs.Service.Icon,
+		&hs.Service.CratedAt,
+		&hs.Service.UpdatedAt,
+	)
+	if err != nil {
+		log.Println(err)
+		return hs, err
+	}
+
+	return hs, nil
 }
