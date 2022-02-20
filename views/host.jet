@@ -328,7 +328,7 @@ Host
                                                 <td>
                                                     <span class="{{ .Service.Icon }} mx-1"></span>
                                                     {{ .Service.ServiceName }}
-                                                    <span onclick="checkNow({{ .ID }})" class="badge bg-secondary mx-1" role="button">Check Now</span>
+                                                    <span onclick="checkNow({{ .ID }}, 'healthy')" class="badge bg-secondary mx-1" role="button">Check Now</span>
                                                 </td>
                                                 <td>
                                                     {{ if dateAfterYearOne(.LastCheck) }}
@@ -367,7 +367,7 @@ Host
                                                 <td>
                                                     <span class="{{ .Service.Icon }} mx-1"></span>
                                                     {{ .Service.ServiceName }}
-                                                    <span onclick="checkNow({{ .ID }})" class="badge bg-secondary mx-1" role="button">Check Now</span>
+                                                    <span onclick="checkNow({{ .ID }}, 'warning')" class="badge bg-secondary mx-1" role="button">Check Now</span>
                                                 </td>
                                                 <td>
                                                     {{ if dateAfterYearOne(.LastCheck) }}
@@ -406,7 +406,7 @@ Host
                                                 <td>
                                                     <span class="{{ .Service.Icon }} mx-1"></span>
                                                     {{ .Service.ServiceName }}
-                                                    <span onclick="checkNow({{ .ID }})" class="badge bg-secondary mx-1" role="button">Check Now</span>
+                                                    <span onclick="checkNow({{ .ID }}, 'problem')" class="badge bg-secondary mx-1" role="button">Check Now</span>
                                                 </td>
                                                 <td>
                                                     {{ if dateAfterYearOne(.LastCheck) }}
@@ -541,18 +541,25 @@ Host
     }
 
     function checkNow(id, oldStatus) {
-        fetch(`/perform-check/${id}/${oldStatus}`)
+        fetch(`/admin/perform-check/${id}/${oldStatus}`)
             .then(res => res.json())
             .then(data => {
-                console.log({ data })
-
                 if (data.ok) {
-                    attention.toast({
-                        msg: data.message,
-                        icon: "info",
-                        timer: 60000,
-                        showCloseButton: true
-                    })
+                    if (data.old_status !== data.new_status) {
+                        attention.toast({
+                            msg: data.message,
+                            icon: "info",
+                            timer: 60000,
+                            showCloseButton: true
+                        })
+                    } else {
+                        attention.toast({
+                            msg: `Service is still in ${data.new_status} state`,
+                            icon: "info",
+                            timer: 5000,
+                            showCloseButton: true
+                        })
+                    }
                 } else {
                     errorAlert("Something went wrong")
                 }

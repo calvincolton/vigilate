@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/tsawler/vigilate/internal/models"
 )
 
@@ -31,14 +31,12 @@ type jsonResp struct {
 }
 
 func (repo *DBRepo) TestCheck(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Hellllooooooo !!!")
 	hostServiceId, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Println(err)
 	}
 
 	oldStatus := chi.URLParam(r, "oldstatus")
-	fmt.Println("-- oldStatus ---", oldStatus)
 	okay := true
 
 	// get host service
@@ -61,6 +59,15 @@ func (repo *DBRepo) TestCheck(w http.ResponseWriter, r *http.Request) {
 	newStatus, msg := repo.testServiceForHost(h, hs)
 
 	// update the host service in the database with service (if changed) and last check
+	hs.Status = newStatus
+	hs.LastCheck = time.Now()
+	hs.UpdatedAt = time.Now()
+
+	err = repo.DB.UpdateHostService(hs)
+	if err != nil {
+		log.Println(err)
+		okay = false
+	}
 
 	// broacast service status changed event (via web sockets)
 
