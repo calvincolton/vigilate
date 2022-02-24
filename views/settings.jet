@@ -436,6 +436,7 @@
 
         document.addEventListener("DOMContentLoaded", function (event) {
             window.scrollTo(0, 0);
+            
             smsEnabled = document.getElementById("sms_enabled").value;
             if (smsEnabled === "0") {
                 hideTwilio();

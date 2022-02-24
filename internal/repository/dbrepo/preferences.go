@@ -2,9 +2,10 @@ package dbrepo
 
 import (
 	"context"
-	"github.com/tsawler/vigilate/internal/models"
 	"log"
 	"time"
+
+	"github.com/tsawler/vigilate/internal/models"
 )
 
 // AllPreferences returns a slice of preferences
@@ -49,10 +50,29 @@ func (m *postgresDBRepo) SetSystemPref(name, value string) error {
 
 	query := `
 		INSERT INTO preferences (
-			  	name, preference, created_at, updated_at
-			  ) VALUES ($1, $2, $3, $4)`
+			name, preference, created_at, updated_at
+		) VALUES ($1, $2, $3, $4)
+	`
 
 	_, err := m.DB.ExecContext(ctx, query, name, value, time.Now(), time.Now())
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateSystemPref updates a system preference setting
+func (m *postgresDBRepo) UpdateSystemPref(name, value string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `
+		UPDATE preferences SET preference = $1, updated_at = $2 WHERE name = $3
+	`
+
+	_, err := m.DB.ExecContext(ctx, query, value, time.Now(), name)
 	if err != nil {
 		log.Println(err)
 		return err

@@ -472,3 +472,60 @@ func (m *postgresDBRepo) GetHostServiceByID(id int) (models.HostService, error) 
 
 	return hs, nil
 }
+
+func (m *postgresDBRepo) GetServicesToMonitor() ([]models.HostService, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `
+		SELECT 
+			hs.id, hs.host_id, hs.service_id, hs.active, hs.schedule_number, 
+			hs.schedule_unit, hs.last_check, hs.status, hs.created_at, hs.updated_at, 
+			s.id, s.service_name, s.active, s.icon, s.created_at, s.updated_at, 
+			h.host_name 
+		FROM host_services AS hs 
+			LEFT JOIN services AS s ON (hs.service_id = s.id)
+			LEFT JOIN hosts AS h ON (h.id = hs.host_id)
+		WHERE 
+			h.active = 1 AND hs.active = 1;
+	`
+
+	var services []models.HostService
+
+	rows, err := m.DB.QueryContext(ctx, query)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var h models.HostService
+		err := rows.Scan(
+			&h.ID,
+			&h.HostID,
+			&h.ServiceID,
+			&h.Active,
+			&h.ScheduleNumber,
+			&h.ScheduleUnit,
+			&h.LastCheck,
+			&h.Status,
+			&h.CreatedAt,
+			&h.UpdatedAt,
+			&h.Service.ID,
+			&h.Service.ServiceName,
+			&h.Service.Active,
+			&h.Service.Icon,
+			&h.Service.CratedAt,
+			&h.Service.UpdatedAt,
+			&h.HostName,
+		)
+		if err != nil {
+			log.Println(err)
+			return services, err
+		}
+		services = append(services, h)
+	}
+
+	return services, nil
+}

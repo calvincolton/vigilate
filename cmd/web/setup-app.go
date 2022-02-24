@@ -139,6 +139,8 @@ func setupApp() (*string, error) {
 	log.Println("Secure", *pusherSecure)
 
 	app.WsClient = wsClient
+	monitorMap := make(map[int]cron.EntryID)
+	app.MonitorMap = monitorMap
 
 	localZone, err := time.LoadLocation("Local")
 	if err != nil {
@@ -150,6 +152,8 @@ func setupApp() (*string, error) {
 	))
 
 	app.Scheduler = scheduler
+
+	go handlers.Repo.StartMonitoring()
 
 	helpers.NewHelpers(&app)
 

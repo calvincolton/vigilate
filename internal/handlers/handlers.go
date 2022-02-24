@@ -411,3 +411,73 @@ func show500(w http.ResponseWriter, r *http.Request) {
 func printTemplateError(w http.ResponseWriter, err error) {
 	_, _ = fmt.Fprint(w, fmt.Sprintf(`<small><span class='text-danger'>Error executing template: %s</span></small>`, err))
 }
+
+func (repo *DBRepo) SetSystemPref(w http.ResponseWriter, r *http.Request) {
+	prefName := r.PostForm.Get("pref_name")
+	prefValue := r.PostForm.Get("pref_value")
+
+	var resp jsonResp
+	resp.OK = true
+	resp.Message = ""
+
+	err := repo.DB.UpdateSystemPref(prefName, prefValue)
+	if err != nil {
+		resp.OK = false
+		resp.Message = err.Error()
+	}
+
+	repo.App.PreferenceMap["monitoring_live"] = prefValue
+
+	out, _ := json.MarshalIndent(resp, "", "    ")
+	w.Header().Set("Content-Type", "applicaiton/json")
+	w.Write(out)
+}
+
+// ToggleMonitoring turns monitoring on and off
+func (repo *DBRepo) ToggleMonitoring(w http.ResponseWriter, r *http.Request) {
+	enabled := r.PostForm.Get("enabled")
+	log.Println(enabled)
+
+	if enabled == "1" {
+		// start monitoring
+		log.Println("Turning monitoring on")
+		repo.App.PreferenceMap["monitoring_live"] = "1"
+		repo.StartMonitoring()
+		repo.App.Scheduler.Start()
+	} else {
+		// stop monitoring
+		log.Println("Turning monitoring off")
+		repo.App.PreferenceMap["monitoring_live"] = "0"
+
+		// remove all items in map from schedule
+		for _, x := range repo.App.MonitorMap {
+			repo.App.Scheduler.Remove(x)
+		}
+
+		// empty the map
+		for k := range repo.App.MonitorMap {
+			delete(repo.App.MonitorMap, k)
+		}
+
+		// delete all entries from schedule
+		for _, i := range repo.App.Scheduler.Entries() {
+			repo.App.Scheduler.Remove(i.ID)
+		}
+
+		repo.App.Scheduler.Stop()
+
+		data := make(map[string]string)
+		data["message"] = "Monitoring is off!"
+		err := app.WsClient.Trigger("public-channel", "app-stopping", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	var resp jsonResp
+	resp.OK = true
+
+	out, _ := json.MarshalIndent(resp, "", "    ")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(out)
+}
