@@ -47,21 +47,44 @@ func (repo *DBRepo) ScheduledCheck(hostServiceID int) {
 	// test the service
 	newStatus, msg := repo.testServiceForHost(h, hs)
 
-	// update host service record in db with status (if changed)
-	// update last_check record
+	if newStatus != hs.Status {
+		repo.updateHostServiceStatusCount(h, hs, newStatus, msg)
+	}
+
+}
+
+func (repo *DBRepo) updateHostServiceStatusCount(h models.Host, hs models.HostService, newStatus, msg string) {
+	// update host service record in db with status and last check
 	hs.Status = newStatus
 	hs.LastCheck = time.Now()
-	err = repo.DB.UpdateHostService(hs)
+	err := repo.DB.UpdateHostService(hs)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	// if the host service status has changed, broadcast to all clients
+	pending, healthy, warning, problem, err := repo.DB.GetAllServiceStatusCounts()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-	// if appropriate, send email or SMS message
+	data := make(map[string]string)
+	data["pending_count"] = strconv.Itoa(pending)
+	data["healthy_count"] = strconv.Itoa(healthy)
+	data["warning_count"] = strconv.Itoa(warning)
+	data["problem_count"] = strconv.Itoa(problem)
+
+	repo.broadcastMessage("public-channel", "host-service-count-changed", data)
 
 	log.Println("New status:", newStatus, "Message:", msg)
+}
+
+func (repo *DBRepo) broadcastMessage(channel, messageType string, data map[string]string) {
+	err := app.WsClient.Trigger(channel, messageType, data)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // TestCheck manually tests a host service and sends JSON response
@@ -138,6 +161,23 @@ func (repo *DBRepo) testServiceForHost(h models.Host, hs models.HostService) (st
 		msg, newStatus = testHTTPForHost(h.URL)
 		break
 	}
+
+	// broadcast to clients if appropriate
+	if hs.Status != newStatus {
+		data := make(map[string]string)
+		data["host_id"] = strconv.Itoa(hs.HostID)
+		data["host_service_id"] = strconv.Itoa(hs.ID)
+		data["host_name"] = h.HostName
+		data["service_name"] = hs.Service.ServiceName
+		data["icon"] = hs.Service.Icon
+		data["status"] = newStatus
+		data["message"] = fmt.Sprintf("%s on %s reports %s", hs.Service.ServiceName, h.HostName, newStatus)
+		data["last_check"] = time.Now().Format("2006-01-02 3:04:06 PM")
+
+		repo.broadcastMessage("public-channel", "host-service-status-changed", data)
+	}
+
+	// TODO - send email/sms if appropriate
 
 	return newStatus, msg
 }
