@@ -136,7 +136,7 @@ func (m *postgresDBRepo) GetHostById(id int) (models.Host, error) {
 			&hs.Service.ServiceName,
 			&hs.Service.Active,
 			&hs.Service.Icon,
-			&hs.Service.CratedAt,
+			&hs.Service.CreatedAt,
 			&hs.Service.UpdatedAt,
 		)
 		if err != nil {
@@ -297,7 +297,7 @@ func (m *postgresDBRepo) AllHosts() ([]models.Host, error) {
 				&hs.Service.ServiceName,
 				&hs.Service.Active,
 				&hs.Service.Icon,
-				&hs.Service.CratedAt,
+				&hs.Service.CreatedAt,
 				&hs.Service.UpdatedAt,
 			)
 			if err != nil {
@@ -437,9 +437,11 @@ func (m *postgresDBRepo) GetHostServiceByID(id int) (models.HostService, error) 
 	query := `
 		SELECT hs.id, hs.host_id, hs.service_id, hs.active, hs.schedule_number, 
 			hs.schedule_unit, hs.last_check, hs.status, hs.created_at, hs.updated_at, 
-			s.id, s.service_name, s.active, s.icon, s.created_at, s.updated_at 
+			s.id, s.service_name, s.active, s.icon, s.created_at, s.updated_at, 
+			h.host_name 
 		FROM host_services AS hs 
 			LEFT JOIN services AS s ON hs.service_id = s.id 
+			LEFT JOIN hosts as h ON hs.host_id = h.id 
 		WHERE hs.id = $1;
 	`
 
@@ -462,8 +464,9 @@ func (m *postgresDBRepo) GetHostServiceByID(id int) (models.HostService, error) 
 		&hs.Service.ServiceName,
 		&hs.Service.Active,
 		&hs.Service.Icon,
-		&hs.Service.CratedAt,
+		&hs.Service.CreatedAt,
 		&hs.Service.UpdatedAt,
+		&hs.HostName,
 	)
 	if err != nil {
 		log.Println(err)
@@ -516,7 +519,7 @@ func (m *postgresDBRepo) GetServicesToMonitor() ([]models.HostService, error) {
 			&h.Service.ServiceName,
 			&h.Service.Active,
 			&h.Service.Icon,
-			&h.Service.CratedAt,
+			&h.Service.CreatedAt,
 			&h.Service.UpdatedAt,
 			&h.HostName,
 		)
@@ -528,4 +531,53 @@ func (m *postgresDBRepo) GetServicesToMonitor() ([]models.HostService, error) {
 	}
 
 	return services, nil
+}
+
+// GetHostServiceByHostIdServiceId gets a host service by host id and service id
+func (m *postgresDBRepo) GetHostServiceByHostIdServiceId(hostID, serviceID int) (models.HostService, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `
+		SELECT 
+			hs.id, hs.host_id, hs.service_id, hs.active, hs.schedule_number, hs.schedule_unit, 
+			hs.last_check, hs.status, hs.created_at, hs.updated_at, 
+			s.id, s.service_name, s.active, s.icon, s.created_at, s.updated_at, 
+			h.host_name 
+		FROM host_services AS hs 
+			LEFT JOIN services AS s ON (hs.service_id = s.id) 
+			LEFT JOIN hosts AS h ON (hs.host_id = h.id) 
+		WHERE hs.host_id = $1 AND hs.service_id = $2;
+	`
+
+	var hs models.HostService
+
+	row := m.DB.QueryRowContext(ctx, query, hostID, serviceID)
+
+	err := row.Scan(
+		&hs.ID,
+		&hs.HostID,
+		&hs.ServiceID,
+		&hs.Active,
+		&hs.ScheduleNumber,
+		&hs.ScheduleUnit,
+		&hs.LastCheck,
+		&hs.Status,
+		&hs.CreatedAt,
+		&hs.UpdatedAt,
+		&hs.Service.ID,
+		&hs.Service.ServiceName,
+		&hs.Service.Active,
+		&hs.Service.Icon,
+		&hs.Service.CreatedAt,
+		&hs.Service.UpdatedAt,
+		&hs.HostName,
+	)
+
+	if err != nil {
+		log.Println("or is it this error???", err)
+		return hs, err
+	}
+
+	return hs, nil
 }
