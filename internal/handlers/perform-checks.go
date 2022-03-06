@@ -116,6 +116,11 @@ func (repo *DBRepo) TestCheck(w http.ResponseWriter, r *http.Request) {
 	// test the service
 	newStatus, msg := repo.testServiceForHost(h, hs)
 
+	// broacast service status changed event (via web sockets)
+	if newStatus != hs.Status {
+		repo.pushStatusChangedEvent(h, hs, newStatus)
+	}
+
 	// update the host service in the database with service (if changed) and last check
 	hs.Status = newStatus
 	hs.LastCheck = time.Now()
@@ -126,8 +131,6 @@ func (repo *DBRepo) TestCheck(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		okay = false
 	}
-
-	// broacast service status changed event (via web sockets)
 
 	// create json
 	var resp jsonResp
@@ -165,6 +168,22 @@ func (repo *DBRepo) testServiceForHost(h models.Host, hs models.HostService) (st
 	// broadcast to clients if appropriate
 	if hs.Status != newStatus {
 		repo.pushStatusChangedEvent(h, hs, newStatus)
+
+		// save event
+		event := models.Event{
+			EventType:     newStatus,
+			HostServiceID: hs.ID,
+			HostID:        h.ID,
+			ServiceName:   hs.Service.ServiceName,
+			HostName:      hs.HostName,
+			Message:       msg,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+		err := repo.DB.InsertEvent(event)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	repo.pushScheduleChangedEvent(hs, newStatus)
