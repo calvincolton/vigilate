@@ -79,6 +79,7 @@ type HostService struct {
 	Status         string
 	HostName       string // not stored in DB
 	Service        Services
+	LastMessage    string
 	LastCheck      time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
