@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	HTTP = 3
-	// HTTPS = 4
-	// SSLCertificate = 5
+	HTTP           = 3
+	HTTPS          = 4
+	SSLCertificate = 5
 )
 
 type jsonResp struct {
@@ -181,6 +181,12 @@ func (repo *DBRepo) testServiceForHost(h models.Host, hs models.HostService) (st
 	case HTTP:
 		msg, newStatus = testHTTPForHost(h.URL)
 		break
+	case HTTPS:
+		msg, newStatus = testHTTPSForHost(h.URL)
+		break
+	case SSLCertificate:
+		msg, newStatus = testSSLForHost(h.URL)
+		break
 	}
 
 	// broadcast to clients if appropriate
@@ -254,6 +260,46 @@ func testHTTPForHost(url string) (string, string) {
 	}
 
 	url = strings.Replace(url, "https://", "http://", -1)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Sprintf("%s - %s", url, "error connecting"), "problem"
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Sprintf("%s - %s", url, resp.Status), "problem"
+	}
+
+	return fmt.Sprintf("%s - %s", url, resp.Status), "healthy"
+}
+
+func testHTTPSForHost(url string) (string, string) {
+	if strings.HasSuffix(url, "/") {
+		url = strings.TrimSuffix(url, "/")
+	}
+
+	url = strings.Replace(url, "http://", "https://", -1)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Sprintf("%s - %s", url, "error connecting"), "problem"
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Sprintf("%s - %s", url, resp.Status), "problem"
+	}
+
+	return fmt.Sprintf("%s - %s", url, resp.Status), "healthy"
+}
+
+func testSSLForHost(url string) (string, string) {
+	if strings.HasSuffix(url, "/") {
+		url = strings.TrimSuffix(url, "/")
+	}
+
+	url = strings.Replace(url, "http://", "https://", -1)
 
 	resp, err := http.Get(url)
 	if err != nil {
